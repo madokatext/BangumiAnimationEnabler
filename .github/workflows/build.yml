@@ -21,6 +21,13 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Check out libxposed API 100
+        uses: actions/checkout@v4
+        with:
+          repository: libxposed/api
+          ref: e2588ee24bbef12c7c2e07666efa60e58e1ee6b3
+          path: .build-deps/libxposed-api
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -31,8 +38,16 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android 15 SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android SDKs
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Publish libxposed API 100 locally
+        run: |
+          chmod +x .build-deps/libxposed-api/gradlew
+          .build-deps/libxposed-api/gradlew \
+            -p .build-deps/libxposed-api \
+            :api:publishApiPublicationToMavenLocal \
+            --stacktrace
 
       - name: Build signed release APK
         run: |

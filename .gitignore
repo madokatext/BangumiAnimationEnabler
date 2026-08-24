@@ -1,4 +1,5 @@
 .gradle/
+.build-deps/
 .idea/
 *.iml
 local.properties
@@ -6,4 +7,3 @@ build/
 app/build/
 captures/
 .DS_Store
-

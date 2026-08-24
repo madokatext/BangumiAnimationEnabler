@@ -2,13 +2,17 @@ package dev.enze.bangumianimationenabler;
 
 import android.animation.ValueAnimator;
 import android.provider.Settings;
-import android.util.Log;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 
-import io.github.libxposed.api.XposedInterface.ExceptionMode;
+import io.github.libxposed.api.XposedInterface;
+import io.github.libxposed.api.XposedInterface.BeforeHookCallback;
+import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam;
 import io.github.libxposed.api.XposedModule;
+import io.github.libxposed.api.annotations.BeforeInvocation;
+import io.github.libxposed.api.annotations.XposedHooker;
 
 /**
  * Presents a normal 1x animation environment to Bangumi while leaving the real system settings
@@ -23,8 +27,12 @@ public final class BangumiAnimationModule extends XposedModule {
     private static final String TRANSITION_ANIMATION_SCALE = "transition_animation_scale";
     private static final String ANIMATOR_DURATION_SCALE = "animator_duration_scale";
 
-    @Override
-    public void onModuleLoaded(ModuleLoadedParam param) {
+    /**
+     * API 100 module entry point. LSPosed 1.11 instantiates entries through this exact constructor.
+     */
+    public BangumiAnimationModule(XposedInterface base, ModuleLoadedParam param) {
+        super(base, param);
+
         String processName = param.getProcessName();
         if (!TARGET_PACKAGE.equals(processName)
                 && !processName.startsWith(TARGET_PACKAGE + ":")) {
@@ -33,16 +41,14 @@ public final class BangumiAnimationModule extends XposedModule {
 
         installValueAnimatorHooks();
         installSettingsHooks();
-        log(Log.INFO, TAG, "1x animations enabled for " + processName);
+        log(TAG + ": 1x animations enabled for " + processName);
     }
 
     private void installValueAnimatorHooks() {
         try {
             Method setDurationScale =
                     ValueAnimator.class.getDeclaredMethod("setDurationScale", float.class);
-            hook(setDurationScale)
-                    .setExceptionMode(ExceptionMode.PROTECTIVE)
-                    .intercept(chain -> chain.proceed(new Object[]{NORMAL_SCALE}));
+            hook(setDurationScale, SetDurationScaleHooker.class);
 
             // The framework normally calls this setter after the module has loaded. Invoking it here
             // also fixes an already-initialized process and notifies any duration-scale listeners.
@@ -51,30 +57,26 @@ public final class BangumiAnimationModule extends XposedModule {
                 setDurationScale.invoke(null, NORMAL_SCALE);
             } catch (Throwable invokeError) {
                 forceDurationScaleField();
-                log(Log.WARN, TAG, "Could not invoke ValueAnimator.setDurationScale", invokeError);
+                log(TAG + ": Could not invoke ValueAnimator.setDurationScale", invokeError);
             }
         } catch (Throwable error) {
             forceDurationScaleField();
-            log(Log.ERROR, TAG, "Could not hook ValueAnimator.setDurationScale", error);
+            log(TAG + ": Could not hook ValueAnimator.setDurationScale", error);
         }
 
         try {
             Method getDurationScale = ValueAnimator.class.getDeclaredMethod("getDurationScale");
-            hook(getDurationScale)
-                    .setExceptionMode(ExceptionMode.PROTECTIVE)
-                    .intercept(chain -> NORMAL_SCALE);
+            hook(getDurationScale, GetDurationScaleHooker.class);
         } catch (Throwable error) {
-            log(Log.WARN, TAG, "Could not hook ValueAnimator.getDurationScale", error);
+            log(TAG + ": Could not hook ValueAnimator.getDurationScale", error);
         }
 
         try {
             Method areAnimatorsEnabled =
                     ValueAnimator.class.getDeclaredMethod("areAnimatorsEnabled");
-            hook(areAnimatorsEnabled)
-                    .setExceptionMode(ExceptionMode.PROTECTIVE)
-                    .intercept(chain -> true);
+            hook(areAnimatorsEnabled, AreAnimatorsEnabledHooker.class);
         } catch (Throwable error) {
-            log(Log.WARN, TAG, "Could not hook ValueAnimator.areAnimatorsEnabled", error);
+            log(TAG + ": Could not hook ValueAnimator.areAnimatorsEnabled", error);
         }
     }
 
@@ -84,7 +86,7 @@ public final class BangumiAnimationModule extends XposedModule {
             field.setAccessible(true);
             field.setFloat(null, NORMAL_SCALE);
         } catch (Throwable error) {
-            log(Log.WARN, TAG, "Could not set ValueAnimator.sDurationScale", error);
+            log(TAG + ": Could not set ValueAnimator.sDurationScale", error);
         }
     }
 
@@ -96,27 +98,71 @@ public final class BangumiAnimationModule extends XposedModule {
             }
 
             Class<?> returnType = method.getReturnType();
-            Object replacement;
-            if (returnType == String.class && method.getName().startsWith("getString")) {
-                replacement = "1";
-            } else if ((returnType == float.class || returnType == Float.class)
-                    && method.getName().startsWith("getFloat")) {
-                replacement = NORMAL_SCALE;
-            } else if ((returnType == int.class || returnType == Integer.class)
-                    && method.getName().startsWith("getInt")) {
-                replacement = 1;
-            } else {
+            boolean supported = returnType == String.class
+                    || returnType == float.class
+                    || returnType == Float.class
+                    || returnType == int.class
+                    || returnType == Integer.class;
+            if (!method.getName().startsWith("get") || !supported) {
                 continue;
             }
 
             try {
-                hook(method)
-                        .setExceptionMode(ExceptionMode.PROTECTIVE)
-                        .intercept(chain -> isAnimationScaleKey(chain.getArg(1))
-                                ? replacement
-                                : chain.proceed());
+                hook(method, SettingsGlobalHooker.class);
             } catch (Throwable error) {
-                log(Log.WARN, TAG, "Could not hook Settings.Global." + method.getName(), error);
+                log(TAG + ": Could not hook Settings.Global." + method.getName(), error);
+            }
+        }
+    }
+
+    @XposedHooker
+    public static final class SetDurationScaleHooker implements XposedInterface.Hooker {
+        @BeforeInvocation
+        public static void before(BeforeHookCallback callback) {
+            Object[] args = callback.getArgs();
+            if (args.length != 0) {
+                args[0] = NORMAL_SCALE;
+            }
+        }
+    }
+
+    @XposedHooker
+    public static final class GetDurationScaleHooker implements XposedInterface.Hooker {
+        @BeforeInvocation
+        public static void before(BeforeHookCallback callback) {
+            callback.returnAndSkip(NORMAL_SCALE);
+        }
+    }
+
+    @XposedHooker
+    public static final class AreAnimatorsEnabledHooker implements XposedInterface.Hooker {
+        @BeforeInvocation
+        public static void before(BeforeHookCallback callback) {
+            callback.returnAndSkip(true);
+        }
+    }
+
+    @XposedHooker
+    public static final class SettingsGlobalHooker implements XposedInterface.Hooker {
+        @BeforeInvocation
+        public static void before(BeforeHookCallback callback) {
+            Object[] args = callback.getArgs();
+            if (args.length < 2 || !isAnimationScaleKey(args[1])) {
+                return;
+            }
+
+            Member member = callback.getMember();
+            if (!(member instanceof Method)) {
+                return;
+            }
+
+            Class<?> returnType = ((Method) member).getReturnType();
+            if (returnType == String.class) {
+                callback.returnAndSkip("1");
+            } else if (returnType == float.class || returnType == Float.class) {
+                callback.returnAndSkip(NORMAL_SCALE);
+            } else if (returnType == int.class || returnType == Integer.class) {
+                callback.returnAndSkip(1);
             }
         }
     }

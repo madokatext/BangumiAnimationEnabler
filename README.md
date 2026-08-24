@@ -18,9 +18,11 @@
 
 其中 `transition_animation_scale` 的字符串读取是 React Native 0.81.4 与 Reanimated 4.1.2 判断“减少动态效果”的关键入口。
 
-模块面向 Android 15（API 35）构建，使用现代 libxposed API 102。静态作用域中只有 Bangumi，不会改变其他普通应用进程看到的动画设置，也不会修改系统设置数据库。
+模块面向 Android 15（API 35）构建，并针对 LSPosed 1.11.0 提供的 libxposed API 100 ABI。静态作用域中只有 Bangumi，不会改变其他普通应用进程看到的动画设置，也不会修改系统设置数据库。
 
 构建工具采用 Android 官方为 API 35 给出的兼容组合：AGP 8.7.3、Gradle 8.9、JDK 17。
+
+GitHub Actions 会从 libxposed 官方仓库检出固定提交并先把 API 100 发布到任务内的 Maven Local，然后再构建模块；不会错误解析到构造器和 Hook ABI 均不兼容的 API 101/102。
 
 ## GitHub Actions 构建
 
