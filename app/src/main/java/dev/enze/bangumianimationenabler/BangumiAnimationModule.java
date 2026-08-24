@@ -15,13 +15,13 @@ import io.github.libxposed.api.annotations.BeforeInvocation;
 import io.github.libxposed.api.annotations.XposedHooker;
 
 /**
- * Presents a normal 1x animation environment to Bangumi while leaving the real system settings
+ * Presents a 0.5x animation environment to Bangumi while leaving the real system settings
  * untouched.
  */
 public final class BangumiAnimationModule extends XposedModule {
     private static final String TAG = "BangumiAnimEnabler";
     private static final String TARGET_PACKAGE = "com.czy0729.bangumi";
-    private static final float NORMAL_SCALE = 1.0f;
+    private static final float NORMAL_SCALE = 0.5f;
 
     private static final String WINDOW_ANIMATION_SCALE = "window_animation_scale";
     private static final String TRANSITION_ANIMATION_SCALE = "transition_animation_scale";
@@ -41,7 +41,7 @@ public final class BangumiAnimationModule extends XposedModule {
 
         installValueAnimatorHooks();
         installSettingsHooks();
-        log(TAG + ": 1x animations enabled for " + processName);
+        log(TAG + ": 0.5x animations enabled for " + processName);
     }
 
     private void installValueAnimatorHooks() {
@@ -158,7 +158,7 @@ public final class BangumiAnimationModule extends XposedModule {
 
             Class<?> returnType = ((Method) member).getReturnType();
             if (returnType == String.class) {
-                callback.returnAndSkip("1");
+                callback.returnAndSkip("0.5");
             } else if (returnType == float.class || returnType == Float.class) {
                 callback.returnAndSkip(NORMAL_SCALE);
             } else if (returnType == int.class || returnType == Integer.class) {

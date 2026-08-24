@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Bangumi Animation Enabler</string>
-    <string name="module_description">在系统动画全关时，仅为 Bangumi 恢复正常动画</string>
+    <string name="module_description">在系统动画全关时，仅为 Bangumi 启用 0.5x 动画</string>
 </resources>
-

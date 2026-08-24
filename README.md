@@ -2,16 +2,16 @@
 
 一个只作用于 [`com.czy0729.bangumi`](https://github.com/czy0729/Bangumi) 的 LSPosed 模块。
 
-当 Android 开发者选项中的动画缩放被设为 `0` 时，本模块让 Bangumi 进程继续看到正常的 `1x` 动画环境，从而恢复 React Native、Reanimated 和 Android `ValueAnimator` 动画。
+当 Android 开发者选项中的动画缩放被设为 `0` 时，本模块让 Bangumi 进程看到 `0.5x` 动画环境，从而恢复并加速 React Native、Reanimated 和 Android `ValueAnimator` 动画。
 
 ## 原理
 
 模块在 Bangumi 进程启动的最早阶段处理以下入口：
 
-- 将 `ValueAnimator.setDurationScale(0)` 改为 `ValueAnimator.setDurationScale(1)`；
-- 让 `ValueAnimator.getDurationScale()` 返回 `1`；
+- 将 `ValueAnimator.setDurationScale(0)` 改为 `ValueAnimator.setDurationScale(0.5)`；
+- 让 `ValueAnimator.getDurationScale()` 返回 `0.5`；
 - 让 `ValueAnimator.areAnimatorsEnabled()` 返回 `true`；
-- 仅对三个动画缩放键，让 `Settings.Global` 的字符串、浮点数和整数读取返回 `1`：
+- 仅对三个动画缩放键，让 `Settings.Global` 的字符串和浮点数读取返回 `0.5`；整数读取无法表示小数，返回 `1` 作为“已启用”兼容值：
   - `window_animation_scale`
   - `transition_animation_scale`
   - `animator_duration_scale`
@@ -46,4 +46,4 @@ GitHub Actions 会从 libxposed 官方仓库检出固定提交并先把 API 100 
 
 Bangumi 的页面切换主要发生在单个 React Native Activity 内，因此上述处理覆盖其实际使用的应用内动画路径。由 Android `system_server` 绘制的跨应用窗口/任务切换动画仍属于系统全局窗口动画；本模块不会为了改变它而注入系统框架进程。
 
-另外，Android 也可能因省电策略把进程内 Animator 比例降为 `0`。本模块会同样将 Bangumi 进程中的该比例固定为 `1x`。
+另外，Android 也可能因省电策略把进程内 Animator 比例降为 `0`。本模块会同样将 Bangumi 进程中的该比例固定为 `0.5x`。
