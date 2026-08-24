@@ -18,7 +18,9 @@
 
 其中 `transition_animation_scale` 的字符串读取是 React Native 0.81.4 与 Reanimated 4.1.2 判断“减少动态效果”的关键入口。
 
-模块使用现代 libxposed API 102，静态作用域中只有 Bangumi，不会改变其他普通应用进程看到的动画设置，也不会修改系统设置数据库。
+模块面向 Android 15（API 35）构建，使用现代 libxposed API 102。静态作用域中只有 Bangumi，不会改变其他普通应用进程看到的动画设置，也不会修改系统设置数据库。
+
+构建工具采用 Android 官方为 API 35 给出的兼容组合：AGP 8.7.3、Gradle 8.9、JDK 17。
 
 ## GitHub Actions 构建
 
@@ -43,4 +45,3 @@
 Bangumi 的页面切换主要发生在单个 React Native Activity 内，因此上述处理覆盖其实际使用的应用内动画路径。由 Android `system_server` 绘制的跨应用窗口/任务切换动画仍属于系统全局窗口动画；本模块不会为了改变它而注入系统框架进程。
 
 另外，Android 也可能因省电策略把进程内 Animator 比例降为 `0`。本模块会同样将 Bangumi 进程中的该比例固定为 `1x`。
-

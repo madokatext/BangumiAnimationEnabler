@@ -25,14 +25,14 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "17"
           cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK 37
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+      - name: Install Android 15 SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build signed release APK
         run: |
@@ -45,4 +45,3 @@ jobs:
           name: BangumiAnimationEnabler-release
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-
